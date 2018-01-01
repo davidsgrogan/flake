@@ -40,20 +40,20 @@ with open("40_days.csv") as fp:
           num_current_flakes == 0), "%s %d" % (previous_run_id,
                                                num_current_flakes)
       previous_run_id = run_id
-      if num_current_flakes != 0:
+      if num_current_flakes > 0 and num_current_flakes <= 6:
         histogram[len(list_of_tests_flaked_in_current_run)] += 1
+        list_of_tests_flaked_in_current_run.sort()
         list_of_pairs = GetListOfFlakePairs(list_of_tests_flaked_in_current_run)
         for pair in list_of_pairs:
           pair_to_count_of_cooccurrence[pair] += 1
-
-        list_of_tests_flaked_in_current_run = []
+      list_of_tests_flaked_in_current_run = []
 
     list_of_tests_flaked_in_current_run.append(flaky_test_name)
 
 pair_to_correlation_coeff = {}  # remove?
-for pair, count in pair_to_count_of_cooccurrence.iteritems():
+for pair, cooccurrence_count in pair_to_count_of_cooccurrence.iteritems():
   float_number_of_runs = float(number_of_runs)
-  e_xy = count / float_number_of_runs
+  e_xy = cooccurrence_count / float_number_of_runs
   e_x = test_name_to_count[pair[0]] / float_number_of_runs
   assert e_x > 0, "got %f for %s with count of %d" % (
       e_x, pair[0], test_name_to_count[pair[0]])
@@ -64,5 +64,6 @@ for pair, count in pair_to_count_of_cooccurrence.iteritems():
   correlation_coeff = (e_xy - e_x * e_y) / (stdev_x * stdev_y)
   assert correlation_coeff >= -1.01
   assert correlation_coeff <= 1.01, correlation_coeff
-  print correlation_coeff, pair
-pprint(dict(histogram))
+  print cooccurrence_count, test_name_to_count[pair[0]], test_name_to_count[
+      pair[1]], correlation_coeff, pair
+#pprint(dict(histogram))
