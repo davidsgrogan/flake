@@ -1,5 +1,6 @@
 from collections import defaultdict
 import math
+from pprint import pprint
 
 
 def GetListOfFlakePairs(list_of_flakes):
@@ -8,37 +9,48 @@ def GetListOfFlakePairs(list_of_flakes):
   for i in xrange(length - 1):
     for j in xrange(i + 1, length):
       list_of_pairs.append((list_of_flakes[i], list_of_flakes[j]))
-
-
-#      print list_of_pairs[-1]
   return list_of_pairs
 
-with open("7_days_scrubbed.csv") as fp:
+
+def ParseLine(line):
+  array = line.split(",")
+  run_id = array[0]
+  flaky_test_name = array[1].rstrip()
+  return (run_id, flaky_test_name)
+
+
+with open("40_days.csv") as fp:
   test_name_to_count = defaultdict(int)
   pair_to_count_of_cooccurrence = defaultdict(int)
   #  run_to_list_of_tests = defaultdict(list)
   previous_run_id = "dummy"
   number_of_runs = 0
   list_of_tests_flaked_in_current_run = []
+  histogram = defaultdict(int)
   for cnt, line in enumerate(fp):
-    array = line.split(",")
-    run_id = array[0]
-    flaky_test_name = array[1].rstrip()
     #run_to_list_of_tests[run_id].append(flaky_test_name)
+    (run_id, flaky_test_name) = ParseLine(line)
     test_name_to_count[flaky_test_name] += 1
 
     if previous_run_id != run_id:
+      # assert haven't seen this run_id before?
       number_of_runs += 1
-      list_of_pairs = GetListOfFlakePairs(list_of_tests_flaked_in_current_run)
-      for pair in list_of_pairs:
-        pair_to_count_of_cooccurrence[pair] += 1
-
-      list_of_tests_flaked_in_current_run = []
+      num_current_flakes = len(list_of_tests_flaked_in_current_run)
+      assert (previous_run_id == "dummy") == (
+          num_current_flakes == 0), "%s %d" % (previous_run_id,
+                                               num_current_flakes)
       previous_run_id = run_id
+      if num_current_flakes != 0:
+        histogram[len(list_of_tests_flaked_in_current_run)] += 1
+        list_of_pairs = GetListOfFlakePairs(list_of_tests_flaked_in_current_run)
+        for pair in list_of_pairs:
+          pair_to_count_of_cooccurrence[pair] += 1
+
+        list_of_tests_flaked_in_current_run = []
 
     list_of_tests_flaked_in_current_run.append(flaky_test_name)
 
-pair_to_correlation_coeff = {}
+pair_to_correlation_coeff = {}  # remove?
 for pair, count in pair_to_count_of_cooccurrence.iteritems():
   float_number_of_runs = float(number_of_runs)
   e_xy = count / float_number_of_runs
@@ -53,3 +65,4 @@ for pair, count in pair_to_count_of_cooccurrence.iteritems():
   assert correlation_coeff >= -1.01
   assert correlation_coeff <= 1.01, correlation_coeff
   print correlation_coeff, pair
+pprint(dict(histogram))
