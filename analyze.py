@@ -44,7 +44,6 @@ with open("interactive_ui_tests_365_days.csv") as fp:
       assert (previous_run_id == "dummy") == (
           num_current_flakes == 0), "%s %d" % (previous_run_id,
                                                num_current_flakes)
-      previous_run_id = run_id
       # >6 seems (via eyeballing the histogram) to indicate an infra/harness
       # failure for interactive_ui_tests.
       if num_current_flakes > 0 and num_current_flakes <= 6:
@@ -55,8 +54,12 @@ with open("interactive_ui_tests_365_days.csv") as fp:
         list_of_tests_flaked_in_current_run.sort()
         list_of_pairs = GetListOfFlakePairs(list_of_tests_flaked_in_current_run)
         for pair in list_of_pairs:
+          if pair[0] == "WebViewBrowserPluginInteractiveTest.EnsureFocusSynced" and pair[1] == "WebViewInteractiveTests/WebViewPointerLockInteractiveTest.PointerLock_PointerLockLostWithFocus/0":
+            print previous_run_id
           pair_to_count_of_cooccurrence[pair] += 1
+
       list_of_tests_flaked_in_current_run = []
+      previous_run_id = run_id
 
     list_of_tests_flaked_in_current_run.append(flaky_test_name)
 
@@ -75,6 +78,6 @@ for pair, cooccurrence_count in pair_to_count_of_cooccurrence.iteritems():
   correlation_coeff = (e_xy - e_x * e_y) / (stdev_x * stdev_y)
   assert correlation_coeff >= -1.01
   assert correlation_coeff <= 1.01, correlation_coeff
-  print cooccurrence_count, test_name_to_count[pair[0]], test_name_to_count[
-      pair[1]], correlation_coeff, pair
+#  print cooccurrence_count, test_name_to_count[pair[0]], test_name_to_count[
+#      pair[1]], correlation_coeff, pair
 #pprint(dict(histogram_runs_per_flake_count))
