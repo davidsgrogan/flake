@@ -2,8 +2,14 @@ from collections import defaultdict
 import math
 from pprint import pprint
 
+# TODO(dgrogan): add argv support for:
+# input file name
+# output histogram or correlations
+# infra/harness failure cutoff
+
 
 def GetListOfFlakePairs(list_of_flakes):
+  # Returns list of size combin(N, 2) where N is number of flakes in this run.
   length = len(list_of_flakes)
   list_of_pairs = []
   for i in xrange(length - 1):
@@ -19,29 +25,33 @@ def ParseLine(line):
   return (run_id, flaky_test_name)
 
 
-with open("40_days.csv") as fp:
+# Collect metadata and transform the real data.
+with open("interactive_ui_tests_365_days.csv") as fp:
   test_name_to_count = defaultdict(int)
   pair_to_count_of_cooccurrence = defaultdict(int)
-  #  run_to_list_of_tests = defaultdict(list)
   previous_run_id = "dummy"
   number_of_runs = 0
   list_of_tests_flaked_in_current_run = []
-  histogram = defaultdict(int)
+  histogram_runs_per_flake_count = defaultdict(int)
   for cnt, line in enumerate(fp):
-    #run_to_list_of_tests[run_id].append(flaky_test_name)
     (run_id, flaky_test_name) = ParseLine(line)
     test_name_to_count[flaky_test_name] += 1
 
     if previous_run_id != run_id:
-      # assert haven't seen this run_id before?
+      # TODO: Assert first occurrence of run_id?
       number_of_runs += 1
       num_current_flakes = len(list_of_tests_flaked_in_current_run)
       assert (previous_run_id == "dummy") == (
           num_current_flakes == 0), "%s %d" % (previous_run_id,
                                                num_current_flakes)
       previous_run_id = run_id
+      # >6 seems (via eyeballing the histogram) to indicate an infra/harness
+      # failure for interactive_ui_tests.
       if num_current_flakes > 0 and num_current_flakes <= 6:
-        histogram[len(list_of_tests_flaked_in_current_run)] += 1
+        histogram_runs_per_flake_count[len(
+            list_of_tests_flaked_in_current_run)] += 1
+        # Sort to ensure pairs aren't logged differently in different runs, e.g.
+        # (a,b) in run 1 and (b,a) in run 2
         list_of_tests_flaked_in_current_run.sort()
         list_of_pairs = GetListOfFlakePairs(list_of_tests_flaked_in_current_run)
         for pair in list_of_pairs:
@@ -50,6 +60,7 @@ with open("40_days.csv") as fp:
 
     list_of_tests_flaked_in_current_run.append(flaky_test_name)
 
+# The actual math part is below.
 pair_to_correlation_coeff = {}  # remove?
 for pair, cooccurrence_count in pair_to_count_of_cooccurrence.iteritems():
   float_number_of_runs = float(number_of_runs)
@@ -66,4 +77,4 @@ for pair, cooccurrence_count in pair_to_count_of_cooccurrence.iteritems():
   assert correlation_coeff <= 1.01, correlation_coeff
   print cooccurrence_count, test_name_to_count[pair[0]], test_name_to_count[
       pair[1]], correlation_coeff, pair
-#pprint(dict(histogram))
+#pprint(dict(histogram_runs_per_flake_count))
